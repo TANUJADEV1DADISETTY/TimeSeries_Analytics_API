@@ -1,0 +1,9 @@
+{
+  "commands": {
+    "setup": "npm install",
+    "start": "docker-compose up -d",
+    "test": "npm run test:coverage",
+    "benchmark": "node scripts/load_test.js",
+    "shutdown": "docker-compose down -v"
+  }
+}
