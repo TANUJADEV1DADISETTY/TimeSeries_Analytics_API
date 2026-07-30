@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeSeries Analytics Dashboard</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    :root {
+      --bg-dark: #090a0f;
+      --card-bg: rgba(17, 19, 31, 0.65);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.15);
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --purple: #a855f7;
+      --cyan: #06b6d4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.12) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1.5rem;
+    }
+
+    .brand h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .brand p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 0.2rem;
+    }
+
+    .time-badge {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* Grid Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    @media (min-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 320px 1fr;
+      }
+    }
+
+    /* Glass Cards */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(99, 102, 241, 0.25);
+      box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.05);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Stat Cards */
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+
+    .stat-card.pageview::before { background: var(--primary); }
+    .stat-card.click::before { background: var(--cyan); }
+    .stat-card.signup::before { background: var(--success); }
+    .stat-card.purchase::before { background: var(--purple); }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    /* Forms & Controls */
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .input-control {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.75rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .input-control:focus {
+      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    select.input-control {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f3f4f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 1.2rem;
+      padding-right: 2rem;
+    }
+
+    /* Interactive Buttons */
+    .btn {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.75rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: none;
+    }
+
+    /* Quick Ingest Panel */
+    .ingest-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .btn-ingest {
+      font-size: 0.85rem;
+      padding: 0.6rem;
+      border-radius: 8px;
+    }
+
+    .btn-ingest.pageview { background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #818cf8; }
+    .btn-ingest.pageview:hover { background: rgba(99, 102, 241, 0.3); }
+
+    .btn-ingest.click { background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.3); color: #22d3ee; }
+    .btn-ingest.click:hover { background: rgba(6, 182, 212, 0.3); }
+
+    .btn-ingest.signup { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
+    .btn-ingest.signup:hover { background: rgba(16, 185, 129, 0.3); }
+
+    .btn-ingest.purchase { background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); color: #c084fc; }
+    .btn-ingest.purchase:hover { background: rgba(168, 85, 247, 0.3); }
+
+    /* Admin Jobs Panel */
+    .admin-jobs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 9999;
+    }
+
+    .toast {
+      background: rgba(17, 19, 31, 0.95);
+      border: 1px solid var(--card-border);
+      border-left: 4px solid var(--primary);
+      padding: 1rem 1.25rem;
+      border-radius: 12px;
+      color: var(--text-main);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      min-width: 280px;
+    }
+
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.info { border-left-color: var(--cyan); }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Chart Canvas wrap */
+    .chart-wrapper {
+      position: relative;
+      height: 400px;
+      width: 100%;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>TimeSeries Analytics</h1>
+        <p>High-Performance Postgres + Redis Analytics Dashboard</p>
+      </div>
+      <div class="time-badge" id="live-clock">Loading UTC time...</div>
+    </header>
+
+    <!-- Metrics Summary -->
+    <div class="stats-container">
+      <div class="stat-card pageview">
+        <span class="stat-label">Pageviews (24h)</span>
+        <span class="stat-value" id="count-pageview">0</span>
+      </div>
+      <div class="stat-card click">
+        <span class="stat-label">Clicks (24h)</span>
+        <span class="stat-value" id="count-click">0</span>
+      </div>
+      <div class="stat-card signup">
+        <span class="stat-label">Signups (24h)</span>
+        <span class="stat-value" id="count-signup">0</span>
+      </div>
+      <div class="stat-card purchase">
+        <span class="stat-label">Purchases (24h)</span>
+        <span class="stat-value" id="count-purchase">0</span>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="dashboard-grid">
+      
+      <!-- Side Controls panel -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <!-- Filter Card -->
+        <div class="card">
+          <h2 class="card-title">🔍 Filters</h2>
+          <form id="filters-form">
+            <div class="form-group">
+              <label for="start_date">Start Date</label>
+              <input type="datetime-local" id="start_date" class="input-control">
+            </div>
+            
+            <div class="form-group">
+              <label for="end_date">End Date</label>
+              <input type="datetime-local" id="end_date" class="input-control">
+            </div>
+
+            <div class="form-group">
+              <label for="interval">Interval</label>
+              <select id="interval" class="input-control">
+                <option value="hour">Hourly Rollup</option>
+                <option value="day" selected>Daily Rollup</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="event_type_filter">Event Type (Optional)</label>
+              <select id="event_type_filter" class="input-control">
+                <option value="">All Events</option>
+                <option value="pageview">pageview</option>
+                <option value="click">click</option>
+                <option value="signup">signup</option>
+                <option value="purchase">purchase</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn">Apply Filters</button>
+          </form>
+        </div>
+
+        <!-- Ingest Event Panel -->
+        <div class="card">
+          <h2 class="card-title">⚡ Ingest Test Event</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Click to dispatch mock analytics events directly into the PostgreSQL raw ingestion pipeline.
+          </p>
+          <div class="ingest-grid">
+            <button class="btn btn-ingest pageview" onclick="ingestEvent('pageview')">+ Pageview</button>
+            <button class="btn btn-ingest click" onclick="ingestEvent('click')">+ Click</button>
+            <button class="btn btn-ingest signup" onclick="ingestEvent('signup')">+ Signup</button>
+            <button class="btn btn-ingest purchase" onclick="ingestEvent('purchase')">+ Purchase</button>
+          </div>
+        </div>
+
+        <!-- Admin Jobs Panel -->
+        <div class="card">
+          <h2 class="card-title">⚙️ Run Rollup Jobs</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Trigger background housekeeping tasks directly.
+          </p>
+          <div class="admin-jobs-list">
+            <button class="btn btn-secondary" onclick="runJob('rollup/hourly')">Hourly Aggregation</button>
+            <button class="btn btn-secondary" onclick="runJob('rollup/daily')">Daily Aggregation</button>
+            <button class="btn btn-secondary" onclick="runJob('retention')">Data Purge (>30 Days)</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Graph panel -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 class="card-title">📈 Event Analytics Over Time</h2>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="query-meta">Active query</span>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="analyticsChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Wrapper -->
+  <div class="toast-container" id="toast-wrapper"></div>
+
+  <script>
+    let chartInstance = null;
+
+    // Set default filter dates (Start: 7 days ago, End: Now)
+    function setInitialFilterDates() {
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      // ISO Format input fields like YYYY-MM-DDTHH:mm
+      document.getElementById('start_date').value = formatDateForInput(sevenDaysAgo);
+      document.getElementById('end_date').value = formatDateForInput(now);
+    }
+
+    function formatDateForInput(date) {
+      const tzOffset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+      const localISOTime = (new Date(date - tzOffset)).toISOString().slice(0, 16);
+      return localISOTime;
+    }
+
+    // Live Clock
+    function updateClock() {
+      const clockEl = document.getElementById('live-clock');
+      const now = new Date();
+      clockEl.textContent = `UTC Time: ${now.toISOString().replace('T', ' ').substring(0, 19)}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Show Toast Notifications
+    function showToast(message, type = 'info') {
+      const wrapper = document.getElementById('toast-wrapper');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `
+        <span style="font-weight:600;">${type.toUpperCase()}:</span>
+        <span>${message}</span>
+      `;
+      wrapper.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideIn 0.3s reverse forwards';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Ingest Event API Call
+    async function ingestEvent(eventType) {
+      try {
+        const metadata = {
+          user_id: `user_${Math.floor(Math.random() * 1000)}`,
+          path: window.location.pathname,
+          device: 'Desktop/WebBrowser'
+        };
+        if (eventType === 'purchase') {
+          metadata.value = parseFloat((Math.random() * 150).toFixed(2));
+        }
+
+        const res = await fetch('/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_type: eventType, metadata })
+        });
+        
+        const data = await res.json();
+        if (res.status === 201) {
+          showToast(`Mock ${eventType} event ingested successfully!`, 'success');
+          // Refresh statistics and graph
+          fetchDashboardSummary();
+          fetchAnalyticsData();
+        } else {
+          showToast(data.error || 'Failed to ingest event', 'error');
+        }
+      } catch (err) {
+        showToast('Ingestion network request failed', 'error');
+      }
+    }
+
+    // Run Background Job API Call
+    async function runJob(jobName) {
+      showToast(`Triggering ${jobName} job...`, 'info');
+      try {
+        const res = await fetch(`/jobs/${jobName}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.status === 200) {
+          const key = jobName.includes('retention') ? 'rows_purged' : 'rows_processed';
+          showToast(`Job complete! Processed ${data[key] || 0} rows.`, 'success');
+          // Refresh after job run
+          fetchDashboardSummary();
+          fetchAnalyticsData();
+        } else {
+          showToast(data.error || 'Job failed', 'error');
+        }
+      } catch (err) {
+        showToast('Job execution failed', 'error');
+      }
+    }
+
+    // Fetch Dashboard Summary (24h counts)
+    async function fetchDashboardSummary() {
+      try {
+        const res = await fetch('/dashboard/summary');
+        const data = await res.json();
+        
+        // Reset count labels
+        const types = ['pageview', 'click', 'signup', 'purchase'];
+        types.forEach(t => document.getElementById(`count-${t}`).textContent = '0');
+
+        if (data.metrics) {
+          data.metrics.forEach(item => {
+            const el = document.getElementById(`count-${item.event_type}`);
+            if (el) {
+              el.textContent = item.last_24h_count;
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load dashboard summary:', err);
+      }
+    }
+
+    // Fetch Analytics Time Series data
+    async function fetchAnalyticsData() {
+      const startDateVal = document.getElementById('start_date').value;
+      const endDateVal = document.getElementById('end_date').value;
+      const intervalVal = document.getElementById('interval').value;
+      const eventTypeVal = document.getElementById('event_type_filter').value;
+
+      if (!startDateVal || !endDateVal) return;
+
+      const startISO = new Date(startDateVal).toISOString();
+      const endISO = new Date(endDateVal).toISOString();
+
+      let url = `/analytics?start_date=${startISO}&end_date=${endISO}&interval=${intervalVal}`;
+      if (eventTypeVal) {
+        url += `&event_type=${eventTypeVal}`;
+      }
+
+      document.getElementById('query-meta').textContent = 'Loading data...';
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (res.status !== 200) {
+          showToast(data.error || 'Failed to fetch analytics', 'error');
+          document.getElementById('query-meta').textContent = 'Error fetching data';
+          return;
+        }
+
+        document.getElementById('query-meta').textContent = `Query returned ${data.length} records`;
+        renderChart(data, intervalVal);
+      } catch (err) {
+        showToast('Analytics query request failed', 'error');
+        document.getElementById('query-meta').textContent = 'Connection failed';
+      }
+    }
+
+    // Render/Update Chart.js Line Graph
+    function renderChart(analyticsData, interval) {
+      const ctx = document.getElementById('analyticsChart').getContext('2d');
+
+      // Group data by bucket first
+      // bucket maps to: { [bucket_time]: { eventType1: count, eventType2: count } }
+      const bucketsMap = {};
+      const eventTypesSet = new Set();
+
+      analyticsData.forEach(item => {
+        const formattedBucket = formatBucketTime(item.bucket, interval);
+        if (!bucketsMap[formattedBucket]) {
+          bucketsMap[formattedBucket] = {};
+        }
+        bucketsMap[formattedBucket][item.event_type] = item.count;
+        eventTypesSet.add(item.event_type);
+      });
+
+      const labels = Object.keys(bucketsMap).sort();
+      const datasets = [];
+
+      const colorPalette = {
+        pageview: { line: '#6366f1', fill: 'rgba(99, 102, 241, 0.05)' },
+        click: { line: '#06b6d4', fill: 'rgba(6, 182, 212, 0.05)' },
+        signup: { line: '#10b981', fill: 'rgba(16, 185, 129, 0.05)' },
+        purchase: { line: '#a855f7', fill: 'rgba(168, 85, 247, 0.05)' }
+      };
+
+      eventTypesSet.forEach(type => {
+        const dataPoints = labels.map(label => bucketsMap[label][type] || 0);
+        const palette = colorPalette[type] || { line: '#9ca3af', fill: 'rgba(156, 163, 175, 0.05)' };
+
+        datasets.push({
+          label: type,
+          data: dataPoints,
+          borderColor: palette.line,
+          backgroundColor: palette.fill,
+          borderWidth: 3,
+          fill: true,
+          tension: 0.35,
+          pointBackgroundColor: palette.line,
+          pointBorderColor: '#090a0f',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        });
+      });
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#f3f4f6',
+                font: {
+                  family: 'Plus Jakarta Sans',
+                  weight: '600',
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(17, 19, 31, 0.95)',
+              titleFont: { family: 'Plus Jakarta Sans', weight: 'bold' },
+              bodyFont: { family: 'Plus Jakarta Sans' },
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderWidth: 1
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#9ca3af',
+                font: { family: 'Plus Jakarta Sans' }
+              }
+            },
+            y: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#9ca3af',
+                font: { family: 'Plus Jakarta Sans' },
+                precision: 0
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function formatBucketTime(isoString, interval) {
+      const d = new Date(isoString);
+      if (interval === 'hour') {
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      } else {
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    }
+
+    // Init Page Event Listeners
+    document.getElementById('filters-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      fetchAnalyticsData();
+    });
+
+    // Load initial states
+    setInitialFilterDates();
+    fetchDashboardSummary();
+    fetchAnalyticsData();
+  </script>
+</body>
+</html>
